@@ -53,7 +53,7 @@ El objetivo principal es dotar a los asistentes de las habilidades técnicas nec
 
 Si te interesa alguno de los temas que hemos abordado hoy, aquí hay una breve lista de lecturas recomendadas para comenzar a explorar estas ideas con mayor profundidad.
 
-- Ghani et al. 2026. Twelve quick tips for applying deep learning to animal sounds. PLOS Computational Biology. [https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(25)00627-0/fulltext](https://doi.org/10.1371/journal.pcbi.1014604
+- [Ghani et al. 2026. Twelve quick tips for applying deep learning to animal sounds. PLOS Computational Biology](https://doi.org/10.1371/journal.pcbi.1014604
 )
 
 ---
