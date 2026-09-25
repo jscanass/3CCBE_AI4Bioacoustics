@@ -1,6 +1,8 @@
 # Introducción a la Inteligencia Artificial para Bioacústica
 
-Oprime el siguiente enlance para abrir el taller [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jscanass/3CCBE_AI4Bioacoustics/blob/main/Notebook.ipynb)
+Este repositorio contiene los materiales del curso AI for Bioacoustics del 3er Congreso Colombiano de Bioacústica y Ecoacústica. 
+
+Oprime el siguiente enlace para abrir el taller [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jscanass/3CCBE_AI4Bioacoustics/blob/main/Notebook.ipynb)
 
 ![logo](https://redecoacustica.org/assets/images/3ccbe_image.png)
 
@@ -17,8 +19,8 @@ El objetivo principal es dotar a los asistentes de las habilidades técnicas nec
 ## Información del evento
 
 * **Evento:** 3er Congreso Colombiano de Bioacústica y Ecoacústica ([3CCBE](https://3ccbe.com/))
-* **Fecha:** Lunes, 28 de septiembre de 2026
-* **Lugar:** Pontificia Universidad Javeriana, Bogotá, Colombia
+* **Fecha:** Lunes (9:30 - 13:00) 28 de septiembre de 2026.
+* **Lugar:** Auditorio Félix Restrepo - Pontificia Universidad Javeriana, Bogotá, Colombia
 
 ---
 
@@ -43,10 +45,16 @@ El objetivo principal es dotar a los asistentes de las habilidades técnicas nec
 
 ## Estructura del Repositorio
 
-* `Notebook.ipynb`: Cuaderno principal del taller.
-* `Presentacion`: Presentación principal del taller.
+↳ presentacion → contiene pdf con la presentación para la sesión teórica
 
+↳ notebook → cuaderno principal en colab del taller en python para la sesión práctica 
 
+## Material adicional
+
+Si te interesa alguno de los temas que hemos abordado hoy, aquí hay una breve lista de lecturas recomendadas para comenzar a explorar estas ideas con mayor profundidad.
+
+- Ghani et al. 2026. Twelve quick tips for applying deep learning to animal sounds. PLOS Computational Biology. [https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(25)00627-0/fulltext](https://doi.org/10.1371/journal.pcbi.1014604
+)
 
 ---
 
