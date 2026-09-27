@@ -279,8 +279,6 @@ class PteroSet:
             print(f"Se reutilizó {self.ruta_embeddings}")
             return embeddings
 
-        import bioacoustics_model_zoo as bmz
-
         requeridos = {
             _nombre_archivo(ruta)
             for ruta in etiquetas.index.get_level_values("file").unique()
@@ -305,7 +303,14 @@ class PteroSet:
                 f"Primer WAV inaccesible: {inaccesibles[0]}"
             )
 
-        embeddings = bmz.Perch2().embed(
+        modelo = getattr(self, "_modelo_perch", None)
+        if modelo is None:
+            import bioacoustics_model_zoo as bmz
+
+            modelo = bmz.Perch2()
+            self._modelo_perch = modelo
+
+        embeddings = modelo.embed(
             etiquetas_audio,
             batch_size=32,
             num_workers=0,
@@ -662,6 +667,225 @@ def resumir_etiquetas(etiquetas, proyecto, taxonomia):
         int((etiquetas_por_ventana > 1).sum()),
     )
     return frecuencias
+
+
+def crear_demo_clasificador_directo_perch(dataset, etiquetas):
+    import bioacoustics_model_zoo as bmz
+
+    print("Cargando Perch 2 y su vocabulario de clases...")
+    modelo = bmz.Perch2()
+    dataset._modelo_perch = modelo
+    nombres = dataset.taxonomia.set_index("code")["species"].to_dict()
+
+    def normalizar_nombre(nombre):
+        return " ".join(str(nombre).split()).casefold()
+
+    clase_perch_por_nombre = {
+        normalizar_nombre(clase): clase for clase in modelo.classes
+    }
+    codigos_pteroset_por_nombre = {}
+    for codigo, nombre in nombres.items():
+        nombre_normalizado = normalizar_nombre(nombre)
+        codigos_pteroset_por_nombre.setdefault(nombre_normalizado, []).append(
+            codigo
+        )
+
+    filas = []
+    indices_por_codigo = {}
+    for codigo in etiquetas.columns:
+        indices = [
+            indice
+            for indice in etiquetas.index[etiquetas[codigo].eq(1)]
+            if dataset.audio_disponible(indice)
+        ]
+        nombre = " ".join(str(nombres.get(codigo, codigo)).split())
+        clase_perch = clase_perch_por_nombre.get(normalizar_nombre(nombre))
+        indices_por_codigo[codigo] = indices
+        filas.append(
+            {
+                "codigo": codigo,
+                "especie": nombre,
+                "en_perch": clase_perch is not None,
+                "clase_perch": clase_perch,
+                "ventanas_disponibles": len(indices),
+            }
+        )
+
+    cobertura = pd.DataFrame(filas)
+    if cobertura.empty:
+        return widgets.HTML(
+            "No hay ventanas positivas con WAV disponible para esta demostración."
+        )
+
+    cobertura_por_codigo = cobertura.set_index("codigo")
+    incluidas_total = cobertura["en_perch"].sum()
+    incluidas = cobertura.loc[
+        cobertura["en_perch"] & cobertura["ventanas_disponibles"].gt(0)
+    ].sort_values("especie")
+    ausentes = cobertura.loc[
+        ~cobertura["en_perch"] & cobertura["ventanas_disponibles"].gt(0)
+    ].sort_values("especie")
+    print(
+        f"Perch incluye {incluidas_total} de las {len(cobertura)} clases "
+        f"de PteroSet."
+    )
+    display(
+        cobertura[["codigo", "especie", "en_perch", "ventanas_disponibles"]].rename(
+            columns={
+                "codigo": "Código PteroSet",
+                "especie": "Clase en PteroSet",
+                "en_perch": "¿Está en Perch?",
+                "ventanas_disponibles": "Ejemplos disponibles",
+            }
+        )
+    )
+
+    escenarios = {}
+    if not incluidas.empty:
+        escenarios["Clase incluida en Perch"] = incluidas
+    if not ausentes.empty:
+        escenarios["Clase ausente de Perch"] = ausentes
+    if not escenarios:
+        return widgets.HTML("No fue posible construir ejemplos comparables.")
+
+    selector_escenario = widgets.ToggleButtons(
+        options=list(escenarios),
+        description="Caso:",
+        style={"description_width": "initial"},
+    )
+    selector_especie = widgets.Dropdown(
+        description="Especie:",
+        layout=widgets.Layout(width="650px"),
+        style={"description_width": "initial"},
+    )
+    selector_ejemplo = widgets.BoundedIntText(
+        value=1,
+        min=1,
+        max=1,
+        description="Ejemplo:",
+        layout=widgets.Layout(width="220px"),
+        style={"description_width": "initial"},
+    )
+    boton = widgets.Button(
+        description="Probar clasificador",
+        button_style="primary",
+        icon="play",
+    )
+    salida = widgets.Output()
+
+    def tabla_escenario():
+        return escenarios[selector_escenario.value]
+
+    def actualizar_especies(*_):
+        tabla = tabla_escenario()
+        selector_especie.options = [
+            (
+                f"{fila.especie} ({fila.codigo}; "
+                f"{fila.ventanas_disponibles} ventanas)",
+                fila.codigo,
+            )
+            for fila in tabla.itertuples(index=False)
+        ]
+
+    def actualizar_ejemplos(*_):
+        if selector_especie.value is None:
+            return
+        numero_ejemplos = len(indices_por_codigo[selector_especie.value])
+        selector_ejemplo.max = numero_ejemplos
+        selector_ejemplo.value = 1
+
+    def principales_con_codigos(puntajes, cantidad=5):
+        principales = puntajes.nlargest(cantidad)
+        return pd.DataFrame(
+            {
+                "Especie predicha por Perch": principales.index,
+                "Código en PteroSet": [
+                    ", ".join(
+                        codigos_pteroset_por_nombre.get(
+                            normalizar_nombre(especie),
+                            [],
+                        )
+                    )
+                    or "—"
+                    for especie in principales.index
+                ],
+                "Logit": principales.to_numpy(),
+            },
+            index=range(1, len(principales) + 1),
+        ).rename_axis("Posición")
+
+    def mostrar(_):
+        codigo = selector_especie.value
+        fila = cobertura_por_codigo.loc[codigo]
+        salida.clear_output(wait=True)
+        with salida:
+            indices = indices_por_codigo[codigo]
+            indice = indices[selector_ejemplo.value - 1]
+            presentes = etiquetas.loc[indice]
+            presentes = presentes.index[presentes.eq(1)].tolist()
+            _dibujar_ventana(
+                dataset,
+                indice,
+                presentes,
+                "#2563eb",
+                f"Ejemplo etiquetado como {fila['especie']}",
+                "Espectrograma y eventos etiquetados",
+            )
+
+            muestra = dataset._indice_audio_absoluto(
+                etiquetas.loc[[indice], []]
+            )
+            puntajes = modelo.predict(
+                muestra,
+                batch_size=1,
+                num_workers=0,
+                progress_bar=False,
+            ).iloc[0]
+
+            if not fila["en_perch"]:
+                print(
+                    f"Perch no contiene una salida para {fila['especie']}. "
+                    "Por eso su clasificador original no puede reconocer esta "
+                    "clase directamente."
+                )
+                print(
+                    "Ante este audio, sus cinco predicciones principales son:"
+                )
+                display(principales_con_codigos(puntajes))
+                print(
+                    "Los embeddings sí pueden reutilizar la representación "
+                    "aprendida para entrenar un clasificador con las clases "
+                    "de PteroSet."
+                )
+                return
+
+            clase_objetivo = fila["clase_perch"]
+            posicion = int(puntajes.rank(method="min", ascending=False)[clase_objetivo])
+            print(
+                f"La clase existe en Perch: {clase_objetivo}. "
+                f"Ocupa la posición {posicion} de {len(puntajes)} "
+                f"(logit = {puntajes[clase_objetivo]:.3f})."
+            )
+            display(principales_con_codigos(puntajes))
+            print(
+                "Que la clase exista permite usar el clasificador original, "
+                "pero no garantiza que esta grabación quede en el primer lugar."
+            )
+
+    selector_escenario.observe(actualizar_especies, names="value")
+    selector_especie.observe(actualizar_ejemplos, names="value")
+    boton.on_click(mostrar)
+    actualizar_especies()
+    actualizar_ejemplos()
+
+    return widgets.VBox(
+        [
+            selector_escenario,
+            selector_especie,
+            widgets.HBox([selector_ejemplo, boton]),
+            salida,
+        ]
+    )
 
 
 def _dibujar_ventana(
