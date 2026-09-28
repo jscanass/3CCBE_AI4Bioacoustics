@@ -5,7 +5,7 @@ uv pip install "wavio>=0.0.9"
 uv pip install "batdetect2==1.0.8"
 
 # Download data
-gdown 1lBvKnORB-1wUcZtac59O_fwS3JRanM-a
+gdown 1HYS9YpKLnID6lB3q0BXUt1N39IHUvmgy
 
 # Unzip data
 unzip 3ccbe_data.zip
