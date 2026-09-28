@@ -45,7 +45,7 @@ El objetivo principal es dotar a los asistentes de las habilidades técnicas nec
 
 ## Estructura del Repositorio
 
-↳ presentacion → contiene pdf con la presentación para la sesión teórica
+↳ presentacion → contiene las presentaciones para la sesión teórica y localización
 
 ↳ notebook → cuaderno principal en colab del taller en python para la sesión práctica 
 
